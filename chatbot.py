@@ -6,10 +6,13 @@ import gradio as gr
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-model_id = "unsloth/llama-3-8b-Instruct"
+model_id = "microsoft/phi-2"
 tokenizer = transformers.AutoTokenizer.from_pretrained(model_id)
 model = transformers.AutoModelForCausalLM.from_pretrained(model_id, torch_dtype=torch.bfloat16, device_map=device).to(device)
 
+if tokenizer.pad_token is None:
+    tokenizer.add_special_tokens({'pad_token': '[PAD]'})
+    model.resize_token_embeddings(len(tokenizer))
 
 # Define a function to generate responses
 def generate_response(user_input):
@@ -39,7 +42,9 @@ def generate_response(user_input):
     response_msg = tokenizer.decode(response, skip_special_tokens=True)
 
     messages.append({"role": 'assistant', 'content': response_msg})
-    return response_msg
+
+    # Return the updated chat history as a list of lists
+    return [[msg['role'], msg['content']] for msg in messages]
 
 
 # Initialize the chat history and messages
@@ -49,7 +54,7 @@ messages = [{"role": "system",
 # Create the Gradio interface
 with gr.Blocks() as demo:
     chatbot = gr.Chatbot(
-        value=[("System", "Hi,I'm Helpify, a therapist chatbot who always responds in a supportive and understanding tone!")],
+        value=[("System", "Hi,I'm Helpify, a therapist chatbot who always responds in a supportive and understanding tone")],
         elem_id="chatbot")
     with gr.Row():
         txt = gr.Textbox(show_label=False, placeholder="Enter text and press enter")
